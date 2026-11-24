@@ -8,6 +8,7 @@ import pandas as pd
 from ..features import (
     ABSOLUTE_COLS,
     ALL_FEATURES,
+    CORE_SETS,
     FEATURE_SETS,
     FUSION_GROUPS,
     FUSIONS,
@@ -23,7 +24,7 @@ from .metrics import (
 )
 
 NORMS = ("global", "patient", "patient-abs", "patient-abs-causal")
-ALL_SETS = tuple(FEATURE_SETS) + tuple(FUSIONS)
+ALL_SETS = CORE_SETS + tuple(FUSIONS)
 
 
 def make_variants(table: pd.DataFrame, norms=NORMS, causal_window: int = 300) -> dict:

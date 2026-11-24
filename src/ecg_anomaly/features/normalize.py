@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from .beat_features import FEATURE_SETS
+from .spectral import sparsity_cols
 
 ALL_FEATURES = sorted({c for cols in FEATURE_SETS.values() for c in cols})
 
@@ -17,6 +18,7 @@ ABSOLUTE_COLS = [
     "rr_prev", "rr_next", "rr_median", "qrs_width_s", "area_rel", "qrs_energy_frac",
     "skew", "kurt", "pre_mean", "post_mean", "p_ratio", "p_energy_frac",
     "k_prd5", "k_prd10", "top5_energy",
+    *[c for t in ("dft", "haar", "db2") for c in sparsity_cols(t)],
 ]
 
 

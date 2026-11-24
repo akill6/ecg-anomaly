@@ -50,7 +50,7 @@ def _bars(ax, res, model, metric, norms, sets, ref=None, ylim=None):
     for off, n in zip(offs, norms):
         d = sub[sub.norm == n].set_index("features").reindex(sets)
         y = d[metric].to_numpy()
-        err = np.vstack([y - d[f"{metric}_lo"], d[f"{metric}_hi"] - y])
+        err = np.maximum(np.vstack([y - d[f"{metric}_lo"], d[f"{metric}_hi"] - y]), 0.0)  # point can sit just outside a percentile CI
         ax.bar(x0 + off, y, w, color=COLORS[n], edgecolor=SURFACE, linewidth=1.5, zorder=3)
         ax.errorbar(x0 + off, y, yerr=err, fmt="none", ecolor=INK2, elinewidth=1, capsize=0,
                     alpha=0.7, zorder=4)

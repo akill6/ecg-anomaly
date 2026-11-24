@@ -11,6 +11,7 @@ from ..beats import detect_rpeaks, extract_beats
 from ..data import PACED, label_detected_peaks, load_record, split_records
 from ..preprocessing import preprocess
 from .beat_features import beat_feature_table
+from .spectral import TRANSFORMS, all_sparsity_features, sparsity_cols
 
 PRE_S, POST_S = 0.25, 0.45
 
@@ -77,9 +78,19 @@ def save_dataset(table, beats, durations, out_dir) -> None:
     pd.Series(durations, name="duration_s").rename_axis("record").to_csv(out / "durations.csv")
 
 
+def ensure_sparsity_columns(table: pd.DataFrame, beats) -> pd.DataFrame:
+    """Add sparsity columns of any basis missing in an older table (computed from the beats)."""
+    missing = [t for t in TRANSFORMS if not set(sparsity_cols(t)) <= set(table.columns)]
+    if not missing:
+        return table
+    new = pd.DataFrame(all_sparsity_features(beats, missing), index=table.index)
+    return pd.concat([table, new[[c for c in new.columns if c not in table.columns]]], axis=1)
+
+
 def load_dataset(out_dir):
     out = Path(out_dir)
     table = pd.read_csv(out / "features.csv.gz", dtype={"record": str})
     beats = np.load(out / "beats.npz")["beats"]
+    table = ensure_sparsity_columns(table, beats)
     durations = pd.read_csv(out / "durations.csv", dtype={"record": str}).set_index("record")["duration_s"]
     return table, beats, durations.to_dict()

@@ -1,4 +1,6 @@
 from .beat_features import (
+    CORE_SETS,
+    SPARSITY_BY,
     FEATURE_SETS,
     FUSION_GROUPS,
     FUSIONS,
@@ -12,6 +14,9 @@ from .beat_features import (
 from .normalize import ABSOLUTE_COLS, ALL_FEATURES, per_record_normalize
 from .dataset import build_dataset, list_records, load_dataset, record_table, save_dataset
 
-__all__ = ["FEATURE_SETS", "FUSION_GROUPS", "FUSIONS", "causal_template", "rhythm_features",
+__all__ = ["CORE_SETS", "SPARSITY_BY", "FEATURE_SETS", "FUSION_GROUPS", "FUSIONS", "causal_template", "rhythm_features",
            "wave_features", "beat_feature_table", "dct_sparsity_features", "morphology_features",
            "ABSOLUTE_COLS", "ALL_FEATURES", "list_records", "per_record_normalize", "build_dataset", "load_dataset", "record_table", "save_dataset"]
+
+from .spectral import TRANSFORMS, dwt_coeffs, feature_set_for, sparsity_features  # noqa: E402
+__all__ += ["TRANSFORMS", "dwt_coeffs", "sparsity_features", "feature_set_for"]
