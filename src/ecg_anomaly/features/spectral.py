@@ -43,29 +43,41 @@ def _check(transform: str) -> None:
         raise ValueError(f"unknown transform {transform!r}; choose from {TRANSFORMS}")
 
 
-def dwt_coeffs(x, wavelet: str = "haar", level: int = 5) -> np.ndarray:
-    """Orthonormal multi-level DWT of every row of ``x`` (periodic extension).
+def _pywt_filters(wavelet: str):
+    """Decomposition filters exactly as PyWavelets builds them for the ``db`` family.
 
-    Rows are zero-padded to a multiple of ``2**level``. Returns all detail coefficients of
-    every level plus the final approximation, shape ``(n, padded_length)``; the transform
-    preserves energy (Parseval).
+    ``dec_lo[i] = c[F-1-i]``, ``dec_hi[i] = (-1)**(F-1-i) * c[i]`` (``haar`` is ``db1``).
+    """
+    c = WAVELETS[wavelet]
+    f = len(c)
+    dec_lo = c[::-1]
+    dec_hi = (-1.0) ** (f - 1 - np.arange(f)) * c
+    return dec_lo, dec_hi
+
+
+def dwt_coeffs(x, wavelet: str = "haar", level: int = 5) -> np.ndarray:
+    """Orthonormal multi-level DWT of every row of ``x``, same convention as
+    ``pywt.wavedec(..., mode="periodization")``.
+
+    Rows are zero-padded to a multiple of ``2**level``. Returns the coefficients of every level
+    (``[cA_n, cD_n, ..., cD_1]`` as in PyWavelets) in one array of shape ``(n, padded_length)``;
+    the transform preserves energy (Parseval).
     """
     if wavelet not in WAVELETS:
         raise ValueError(f"unknown wavelet {wavelet!r}; choose from {tuple(WAVELETS)}")
-    h = WAVELETS[wavelet]
-    f = len(h)
-    g = h[::-1] * (-1.0) ** np.arange(f)  # quadrature mirror high-pass
+    dec_lo, dec_hi = _pywt_filters(wavelet)
+    f = len(dec_lo)
     x = np.asarray(x, dtype=float)
-    m = 2**level
-    pad = (-x.shape[1]) % m
+    pad = (-x.shape[1]) % (2**level)
     a = np.pad(x, ((0, 0), (0, pad)))
     out = []
     for _ in range(level):
         length = a.shape[1]
-        idx = (2 * np.arange(length // 2)[:, None] + np.arange(f)[None, :]) % length
+        # PyWavelets (periodization): out[o] = sum_j filter[j] * a[(F/2 + 2o - j) mod length]
+        idx = (f // 2 + 2 * np.arange(length // 2)[:, None] - np.arange(f)[None, :]) % length
         w = a[:, idx]  # (n, length/2, f)
-        out.append(w @ g)
-        a = w @ h
+        out.append(w @ dec_hi)
+        a = w @ dec_lo
     out.append(a)
     return np.concatenate(out[::-1], axis=1)
 

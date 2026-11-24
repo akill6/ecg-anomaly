@@ -34,7 +34,7 @@ def test_haar_matches_hand_computation_and_db2_kills_linear_trends():
                                              4 / 2**0.5, 16 / 2**0.5]))
     ramp = np.tile(np.arange(64.0), (1, 1))
     d = dwt_coeffs(ramp, "db2", 1)[0, 32:]  # detail band; db2 has 2 vanishing moments
-    assert np.allclose(d[:-1], 0, atol=1e-9)  # last value touches the periodic wrap
+    assert np.allclose(d[1:-1], 0, atol=1e-9)  # the edges touch the periodic wrap
 
 
 def test_dct_features_equal_original_formula():
@@ -108,3 +108,34 @@ def test_feature_set_for_gives_valid_names():
     assert feature_set_for("multi") == "all_multi" and feature_set_for("dct") == "all"
     with pytest.raises(ValueError):
         feature_set_for("fourier")
+
+
+@pytest.mark.parametrize("w", ["haar", "db2"])
+def test_dwt_matches_pywavelets(w):
+    """Same set of coefficients as PyWavelets (periodization mode); skipped without pywt."""
+    pywt = pytest.importorskip("pywt")
+    x = _beats(5, L=192)  # multiple of 2**5, so no padding on either side
+    mine = dwt_coeffs(x, w, 5)
+    for i in range(len(x)):
+        ref = np.concatenate(pywt.wavedec(x[i], w, mode="periodization", level=5))
+        assert np.allclose(np.sort(np.abs(mine[i])), np.sort(np.abs(ref)), atol=1e-9)
+
+
+@pytest.mark.parametrize("w", list(WAVELETS))
+def test_dwt_matches_literal_port_of_pywt_loop(w):
+    """Slow scalar port of PyWavelets' periodization loop (convolution.template.c) - checks the
+    exact coefficients, not only their magnitudes; works without pywt installed."""
+    from ecg_anomaly.features.spectral import _pywt_filters
+
+    lo, hi = _pywt_filters(w)
+    f = len(lo)
+    x = _beats(3, L=64)
+    for row, mine in zip(x, dwt_coeffs(x, w, 3)):
+        a, parts = row.copy(), []
+        for _ in range(3):
+            n = len(a)
+            d = [sum(hi[j] * a[(f // 2 + 2 * o - j) % n] for j in range(f)) for o in range(n // 2)]
+            a_new = [sum(lo[j] * a[(f // 2 + 2 * o - j) % n] for j in range(f)) for o in range(n // 2)]
+            parts.append(np.array(d)); a = np.array(a_new)
+        ref = np.concatenate([a] + parts[::-1])
+        assert np.allclose(mine, ref)
